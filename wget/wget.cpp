@@ -4,8 +4,6 @@
 #include "stdafx.h"
 #include <string>
 
-bool WinRTDownloadFile(const std::wstring &remoteFile, const std::wstring &localFile);
-bool WinHTTPDownloadDriver(const std::wstring &url, const std::wstring &localFile, ProgressCallback *callback);
 
 void ProgressStatus(size_t rate, void *userdata) {
 	printf("\rDownload: %d%%", rate);

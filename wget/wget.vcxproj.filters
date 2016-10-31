@@ -35,13 +35,16 @@
     <ClCompile Include="modrendownload.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="download.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
     <ClCompile Include="urlmondownload.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="bitsdownload.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="wininetdownload.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="winhttpdownload.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>

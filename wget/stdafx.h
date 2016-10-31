@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <tchar.h>
 
+#include <string>
 
 
 // TODO:  在此处引用程序需要的其他头文件
@@ -17,3 +18,6 @@ struct ProgressCallback {
 	void(*impl)(size_t rate, void *userdata);
 	void *userdata;
 };
+
+bool WinRTDownloadFile(const std::wstring &remoteFile, const std::wstring &localFile);
+bool WinHTTPDownloadDriver(const std::wstring &url, const std::wstring &localFile, ProgressCallback *callback);
