@@ -158,6 +158,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="bitsdownload.cpp" />
+    <ClCompile Include="console.cpp" />
     <ClCompile Include="winhttpdownload.cpp" />
     <ClCompile Include="modrendownload.cpp" />
     <ClCompile Include="stdafx.cpp">

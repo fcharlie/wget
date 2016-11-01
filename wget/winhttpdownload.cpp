@@ -69,19 +69,40 @@ ParseHeader(wchar_t *begin, size_t length,
 	return true;
 }
 
+class InternetObject {
+public:
+	InternetObject(HINTERNET hInternet):hInternet_(hInternet) {
+	}
+	operator HINTERNET() {
+		return hInternet_;
+	}
+	operator bool() {
+		return hInternet_ != nullptr;
+	}
+	InternetObject() {
+		if (hInternet_) {
+			WinHttpCloseHandle(hInternet_);
+		}
+	}
+private:
+	HINTERNET hInternet_;
+};
+
 bool WinHTTPDownloadDriver(const std::wstring &url, const std::wstring &localFile,ProgressCallback *callback) {
 	RequestURL zurl;
-	if (!zurl.Parse(url))
+	if (!zurl.Parse(url)) {
+		BaseErrorMessagePrint(L"Wrong URL: %s\n",url.c_str());
 		return false;
-	auto hInternet =
+	}
+	InternetObject hInternet =
 		WinHttpOpen(DEFAULT_USERAGENT, WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
 			WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
-	if (hInternet == nullptr)
+	if (!hInternet)
 		return false;
-	auto hConnect = WinHttpConnect(hInternet, zurl.host.c_str(),
+	InternetObject hConnect = WinHttpConnect(hInternet, zurl.host.c_str(),
 		(INTERNET_PORT)zurl.nPort, 0);
-	if (hConnect == nullptr) {
-		WinHttpCloseHandle(hInternet);
+	if (!hConnect) {
+		BaseErrorMessagePrint(L"Server unable to connect: %s",zurl.host.c_str());
 		return false;
 	}
 	DWORD dwOption = WINHTTP_OPTION_REDIRECT_POLICY_ALWAYS;
@@ -92,24 +113,22 @@ bool WinHTTPDownloadDriver(const std::wstring &url, const std::wstring &localFil
 	auto hRequest = WinHttpOpenRequest(
 		hConnect, L"GET", zurl.path.c_str(), nullptr, WINHTTP_NO_REFERER,
 		WINHTTP_DEFAULT_ACCEPT_TYPES, dwOpenRequestFlag);
-	if (hRequest == nullptr) {
-		WinHttpCloseHandle(hConnect);
-		WinHttpCloseHandle(hInternet);
+	if (!hRequest) {
+		ErrorMessage err(GetLastError());
+		BaseErrorMessagePrint(L"Open Request failed: %s", err.message());
 		return false;
 	}
 
 	if (WinHttpSendRequest(hRequest, WINHTTP_NO_ADDITIONAL_HEADERS, 0,
 		WINHTTP_NO_REQUEST_DATA, 0, 0, 0) == FALSE) {
-		WinHttpCloseHandle(hRequest);
-		WinHttpCloseHandle(hConnect);
-		WinHttpCloseHandle(hInternet);
+		ErrorMessage err(GetLastError());
+		BaseErrorMessagePrint(L"Send Request failed: %s", err.message());
 		return false;
 	}
 
 	if (WinHttpReceiveResponse(hRequest, NULL) == FALSE) {
-		WinHttpCloseHandle(hRequest);
-		WinHttpCloseHandle(hConnect);
-		WinHttpCloseHandle(hInternet);
+		ErrorMessage err(GetLastError());
+		BaseErrorMessagePrint(L"Receive Response failed: %s", err.message());
 		return false;
 	}
 	DWORD dwHeader = 0;
@@ -185,8 +204,5 @@ bool WinHTTPDownloadDriver(const std::wstring &url, const std::wstring &localFil
 	}
 	CloseHandle(hFile);
 	MoveFileExW(tmp.c_str(), npath.c_str(), MOVEFILE_COPY_ALLOWED);
-	WinHttpCloseHandle(hRequest);
-	WinHttpCloseHandle(hConnect);
-	WinHttpCloseHandle(hInternet);
 	return true;
 }
