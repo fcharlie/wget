@@ -118,14 +118,12 @@ bool WinHTTPDownloadDriver(const std::wstring &url, const std::wstring &localFil
 		BaseErrorMessagePrint(L"Open Request failed: %s", err.message());
 		return false;
 	}
-
 	if (WinHttpSendRequest(hRequest, WINHTTP_NO_ADDITIONAL_HEADERS, 0,
 		WINHTTP_NO_REQUEST_DATA, 0, 0, 0) == FALSE) {
 		ErrorMessage err(GetLastError());
 		BaseErrorMessagePrint(L"Send Request failed: %s", err.message());
 		return false;
 	}
-
 	if (WinHttpReceiveResponse(hRequest, NULL) == FALSE) {
 		ErrorMessage err(GetLastError());
 		BaseErrorMessagePrint(L"Receive Response failed: %s", err.message());
@@ -137,7 +135,7 @@ bool WinHTTPDownloadDriver(const std::wstring &url, const std::wstring &localFil
 		WINHTTP_HEADER_NAME_BY_INDEX, NULL, &dwHeader,
 		WINHTTP_NO_HEADER_INDEX);
 	auto headerBuffer = new wchar_t[dwHeader + 1];
-	size_t contentLength = 0;
+	uint64_t contentLength = 0;
 	if (headerBuffer) {
 		::WinHttpQueryHeaders(hRequest, WINHTTP_QUERY_RAW_HEADERS_CRLF,
 			WINHTTP_HEADER_NAME_BY_INDEX, headerBuffer, &dwHeader,
@@ -145,7 +143,7 @@ bool WinHTTPDownloadDriver(const std::wstring &url, const std::wstring &localFil
 		std::unordered_map<std::wstring, std::wstring> headers;
 		ParseHeader(headerBuffer, dwHeader, headers);
 		contentLength =
-			static_cast<size_t>(_wtoll(headers[L"Content-Length"].c_str()));
+			static_cast<uint64_t>(_wtoll(headers[L"Content-Length"].c_str()));
 		delete[] headerBuffer;
 	}
 	std::wstring tmp = localFile + L".part";
@@ -153,7 +151,7 @@ bool WinHTTPDownloadDriver(const std::wstring &url, const std::wstring &localFil
 		CreateFileW(tmp.c_str(), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ,
 			NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
 	DWORD dwSize = 0;
-	size_t total = 0;
+	uint64_t total = 0;
 	if (callback) {
 		callback->impl(0, callback->userdata);
 	}

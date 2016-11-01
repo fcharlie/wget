@@ -16,12 +16,11 @@
 class ErrorMessage {
 public:
 	ErrorMessage(DWORD errid):release_(false){
-		if (!FormatMessageW(
+		if (FormatMessageW(
 			FORMAT_MESSAGE_FROM_SYSTEM |
 			FORMAT_MESSAGE_ALLOCATE_BUFFER , nullptr, errid,
 			MAKELANGID(LANG_NEUTRAL, SUBLANG_NEUTRAL),
-			(LPWSTR)&buf, 0, nullptr
-		)) {
+			(LPWSTR)&buf, 0, nullptr)==0) {
 			buf = L"Unknown error";
 		}
 		else {
