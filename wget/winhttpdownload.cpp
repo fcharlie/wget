@@ -4,6 +4,7 @@
 #include <windows.h>
 #include <winhttp.h>
 #include <unordered_map>
+#include "console.h"
 
 #pragma comment(lib,"WinHTTP")
 

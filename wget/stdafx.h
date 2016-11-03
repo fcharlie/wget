@@ -39,8 +39,6 @@ private:
 	LPWSTR buf;
 	bool release_;
 };
-int BaseErrorWriteConhost(const wchar_t *buf, size_t len);
-int BaseErrorMessagePrint(const wchar_t *format, ...);
 
 // TODO:  在此处引用程序需要的其他头文件
 struct ProgressCallback {

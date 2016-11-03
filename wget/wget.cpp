@@ -3,6 +3,7 @@
 
 #include "stdafx.h"
 #include <string>
+#include "console.h"
 
 
 void ProgressStatus(size_t rate, void *userdata) {
