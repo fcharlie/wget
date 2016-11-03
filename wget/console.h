@@ -41,8 +41,9 @@ namespace Console {
 		};
 	}
 }
+int BaseWriteConhostEx(HANDLE hConsole, WORD color, const wchar_t *buf, size_t len);
+int BaseMessagePrintEx(WORD color, const wchar_t *format, ...);
 
-int BaseWriteConhost(HANDLE hConsole,WORD fcolor, WORD bcolor, const wchar_t *buf, size_t len);
-int BaseWriteConhost(HANDLE hConsole,WORD color,const wchar_t *buf, size_t len);
+int BaseWriteConhost(HANDLE hConsole,WORD fcolor,const wchar_t *buf, size_t len);
 int BaseMessagePrint(WORD color,const wchar_t *format, ...);
 int BaseErrorMessagePrint(const wchar_t *format, ...);
