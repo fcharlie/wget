@@ -1,8 +1,13 @@
 #pragma once
+//#if defined(_MSC_VER) && _MSC_VER > 1600
+//#include <sal.h>
+//#else
+//#define _Printf_format_string_
+//#endif
 #include <wincon.h>
 
-namespace Console {
-	namespace Foreground {
+namespace console {
+	namespace fc {
 		enum Color :WORD {
 			Black = 0,
 			White = FOREGROUND_BLUE | FOREGROUND_GREEN | FOREGROUND_RED,
@@ -20,7 +25,7 @@ namespace Console {
 			LightCyan = FOREGROUND_GREEN | FOREGROUND_BLUE | FOREGROUND_INTENSITY
 		};
 	}
-	namespace Background {
+	namespace bc {
 		enum Color : WORD
 		{
 			Black = 0,
@@ -41,9 +46,11 @@ namespace Console {
 		};
 	}
 }
+/// This color can setting background color
 int BaseWriteConhostEx(HANDLE hConsole, WORD color, const wchar_t *buf, size_t len);
 int BaseMessagePrintEx(WORD color, const wchar_t *format, ...);
 
+/// Only foreground color
 int BaseWriteConhost(HANDLE hConsole,WORD fcolor,const wchar_t *buf, size_t len);
-int BaseMessagePrint(WORD color,const wchar_t *format, ...);
+int BaseMessagePrint(WORD color,  const wchar_t *format, ...);
 int BaseErrorMessagePrint(const wchar_t *format, ...);

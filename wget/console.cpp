@@ -40,7 +40,7 @@ int BaseErrorMessagePrint(const wchar_t *format, ...) {
 	va_start(ap, format);
 	auto l = _vswprintf_c_l(buf, 16348, format, nullptr,ap);
 	va_end(ap);
-	return BaseWriteConhost(hConsole,Console::Foreground::LightRed,buf, l);
+	return BaseWriteConhost(hConsole,console::fc::LightRed,buf, l);
 }
 
 int BaseMessagePrint(WORD color,const wchar_t *format, ...) {

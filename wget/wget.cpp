@@ -7,11 +7,13 @@
 
 
 void ProgressStatus(size_t rate, void *userdata) {
+	(void)userdata;
 	printf("\rDownload: %d%%", rate);
 }
 
 int wmain(int argc,wchar_t **argv)
 {
+	BaseErrorMessagePrint(L"%s %1c", argv[0],_wenviron[0]);
 	if (argc < 2) {
 		fwprintf(stderr, L"usage: %s url localFile\n", argv[0]);
 		return 1;
