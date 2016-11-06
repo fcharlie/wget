@@ -1,12 +1,16 @@
 #include "stdafx.h"
-#include <string>
 #include <Shlwapi.h>
 #include <windows.h>
 #include <winhttp.h>
+#include <string>
+#include <algorithm>
 #include <unordered_map>
 #include "console.h"
 
 #pragma comment(lib,"WinHTTP")
+
+#define MinWarp(a,b) ((b<a)?b:a)
+
 
 struct RequestURL {
 	int nPort;
@@ -152,15 +156,18 @@ bool WinHTTPDownloadDriver(const std::wstring &url, const std::wstring &localFil
 	HANDLE hFile =
 		CreateFileW(tmp.c_str(), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ,
 			NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-	DWORD dwSize = 0;
+	///
 	uint64_t total = 0;
+	DWORD dwSize = 0;
+	char fixedsizebuf[16384];
+	///
 	if (callback) {
 		callback->impl(0, callback->userdata);
 	}
 	do {
 		// Check for available data.
 		if (!WinHttpQueryDataAvailable(hRequest, &dwSize)) {
-			///
+			break;
 		}
 		total += dwSize;
 		if (contentLength > 0) {
@@ -168,20 +175,15 @@ bool WinHTTPDownloadDriver(const std::wstring &url, const std::wstring &localFil
 				callback->impl(total * 100 / contentLength, callback->userdata);
 			}
 		}
-		// Allocate space for the buffer.
-		BYTE *pchOutBuffer = new BYTE[dwSize + 1];
-		if (!pchOutBuffer) {
-			dwSize = 0;
-		}
-		else {
+		auto dwSizeN = dwSize;
+		while (dwSizeN > 0) {
 			DWORD dwDownloaded = 0;
-			ZeroMemory(pchOutBuffer, dwSize + 1);
-			if (WinHttpReadData(hRequest, (LPVOID)pchOutBuffer, dwSize,
-				&dwDownloaded)) {
-				DWORD wmWritten;
-				WriteFile(hFile, pchOutBuffer, dwSize, &wmWritten, NULL);
+			if (!WinHttpReadData(hRequest, (LPVOID)fixedsizebuf, MinWarp(sizeof(fixedsizebuf), dwSizeN), &dwDownloaded)) {
+				break;
 			}
-			delete[] pchOutBuffer;
+			dwSizeN = dwSizeN - dwDownloaded;
+			DWORD wmWritten;
+			WriteFile(hFile, fixedsizebuf, dwSize, &wmWritten, NULL);
 		}
 	} while (dwSize > 0);
 	if (callback) {
