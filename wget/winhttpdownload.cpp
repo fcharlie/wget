@@ -98,8 +98,11 @@ bool WinHTTPDownloadDriver(const std::wstring &url, const std::wstring &localFil
 	InternetObject hInternet =
 		WinHttpOpen(DEFAULT_USERAGENT, WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
 			WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
-	if (!hInternet)
+	if (!hInternet) {
+		ErrorMessage err(GetLastError());
+		BaseErrorMessagePrint(L"WinHttpOpen(): %s", err.message());
 		return false;
+	}
 	InternetObject hConnect = WinHttpConnect(hInternet, zurl.host.c_str(),
 		(INTERNET_PORT)zurl.nPort, 0);
 	if (!hConnect) {
@@ -111,7 +114,7 @@ bool WinHTTPDownloadDriver(const std::wstring &url, const std::wstring &localFil
 		sizeof(DWORD));
 	DWORD dwOpenRequestFlag =
 		(zurl.nScheme == INTERNET_SCHEME_HTTPS) ? WINHTTP_FLAG_SECURE : 0;
-	auto hRequest = WinHttpOpenRequest(
+	InternetObject hRequest = WinHttpOpenRequest(
 		hConnect, L"GET", zurl.path.c_str(), nullptr, WINHTTP_NO_REFERER,
 		WINHTTP_DEFAULT_ACCEPT_TYPES, dwOpenRequestFlag);
 	if (!hRequest) {
@@ -135,18 +138,16 @@ bool WinHTTPDownloadDriver(const std::wstring &url, const std::wstring &localFil
 	bResult = ::WinHttpQueryHeaders(hRequest, WINHTTP_QUERY_RAW_HEADERS_CRLF,
 		WINHTTP_HEADER_NAME_BY_INDEX, NULL, &dwHeader,
 		WINHTTP_NO_HEADER_INDEX);
-	auto headerBuffer = new wchar_t[dwHeader + 1];
+	std::wstring m_header;
+	m_header.reserve(dwHeader + 1);
 	uint64_t contentLength = 0;
-	if (headerBuffer) {
-		::WinHttpQueryHeaders(hRequest, WINHTTP_QUERY_RAW_HEADERS_CRLF,
-			WINHTTP_HEADER_NAME_BY_INDEX, headerBuffer, &dwHeader,
-			WINHTTP_NO_HEADER_INDEX);
-		std::unordered_map<std::wstring, std::wstring> headers;
-		ParseHeader(headerBuffer, dwHeader, headers);
-		contentLength =
-			static_cast<uint64_t>(_wtoll(headers[L"Content-Length"].c_str()));
-		delete[] headerBuffer;
-	}
+	::WinHttpQueryHeaders(hRequest, WINHTTP_QUERY_RAW_HEADERS_CRLF,
+		WINHTTP_HEADER_NAME_BY_INDEX, &m_header[0], &dwHeader,
+		WINHTTP_NO_HEADER_INDEX);
+	std::unordered_map<std::wstring, std::wstring> headers;
+	ParseHeader(&m_header[0], dwHeader, headers);
+	contentLength =
+		static_cast<uint64_t>(_wtoll(headers[L"Content-Length"].c_str()));
 	std::wstring tmp = localFile + L".part";
 	HANDLE hFile =
 		CreateFileW(tmp.c_str(), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ,

@@ -1,7 +1,9 @@
 #include "stdafx.h"
 #include <string>
 #include <Urlmon.h>
+#include <Wininet.h>
 #include <functional>
+#pragma comment(lib, "WinInet.lib")
 #pragma comment(lib,"Urlmon")
 
 
@@ -97,7 +99,11 @@ HRESULT DownloadStatus::OnProgress(ULONG ulProgress, ULONG ulProgressMax,
 	return S_OK;
 }
 
+
 bool DownloadFileWarp(const std::wstring &remoteFile, const std::wstring &localFile) {
 	DownloadStatus ds;
+#ifndef ENABLE_CACHE
+	DeleteUrlCacheEntryW(remoteFile.c_str());
+#endif
 	return URLDownloadToFileW(nullptr, remoteFile.c_str(), localFile.c_str(), 0, &ds) == S_OK;
 }

@@ -13,7 +13,7 @@ void ProgressStatus(size_t rate, void *userdata) {
 
 int wmain(int argc,wchar_t **argv)
 {
-	BaseErrorMessagePrint(L"%s %1c", argv[0],_wenviron[0]);
+	//BaseErrorMessagePrint(L"\xD83C\xDD9A\n");
 	if (argc < 2) {
 		fwprintf(stderr, L"usage: %s url localFile\n", argv[0]);
 		return 1;
