@@ -1,10 +1,13 @@
 #include "stdafx.h"
 #include <Windows.h>
 #include <WinInet.h>
+#include <Shlwapi.h>
 #include "console.h"
 
 #pragma comment(lib, "WinInet.lib")
-
+//https://msdn.microsoft.com/en-us/library/windows/desktop/aa385328(v=vs.85).aspx
+//INTERNET_OPTION_ENABLE_HTTP_PROTOCOL
+//HTTP_PROTOCOL_FLAG_HTTP2
 struct WinINetRequestURL {
 	int nPort;
 	int nScheme;
@@ -77,5 +80,51 @@ bool WinINetDownloadDriver(const std::wstring &url, const std::wstring &localFil
 		ErrorMessage err(GetLastError());
 		BaseErrorMessagePrint(L"InternetOpenW(): %s", err.message());
 	}
+	DWORD  dwOption = HTTP_PROTOCOL_FLAG_HTTP2;
+	InternetSetOptionW(hInet, INTERNET_OPTION_ENABLE_HTTP_PROTOCOL,&dwOption,sizeof(dwOption));
+	WinINetObject hConnect = InternetConnectW(hInet, zurl.host.c_str(),
+		(INTERNET_PORT)zurl.nPort, nullptr, nullptr, INTERNET_SERVICE_HTTP, 0, NULL);
+	if (!hConnect) {
+		ErrorMessage err(GetLastError());
+		BaseErrorMessagePrint(L"InternetConnectW(): %s", err.message());
+	}
+	WinINetObject hRequest = HttpOpenRequestW(hConnect, L"GET", zurl.path.c_str(),
+		nullptr, L"", nullptr, INTERNET_FLAG_RELOAD, 0);
+	// lpszVersion ->nullptr ,use config
+	std::wstring tmp = localFile + L".part";
+	HANDLE hFile =
+		CreateFileW(tmp.c_str(), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ,
+			NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+	///
+	BYTE fixedsizebuf[16384];
+	DWORD dwReadSize = 0;
+	DWORD dwWriteSize = 0;
+	while (1)
+	{
+		if (InternetReadFile(hInet, fixedsizebuf, sizeof(fixedsizebuf), &dwReadSize)) {
+			if (dwReadSize == 0) {
+				break;
+			}
+			WriteFile(hFile, fixedsizebuf, dwReadSize, &dwWriteSize, NULL);
+		}
+	}
+
+	std::wstring npath = localFile;
+	int i = 1;
+	while (PathFileExistsW(npath.c_str())) {
+		auto n = localFile.find_last_of('.');
+		if (n != std::wstring::npos) {
+			npath = localFile.substr(0, n) + L"(";
+			npath += std::to_wstring(i);
+			npath += L")";
+			npath += localFile.substr(n);
+		}
+		else {
+			npath = localFile + L"(" + std::to_wstring(i) + L")";
+		}
+		i++;
+	}
+	CloseHandle(hFile);
+	MoveFileExW(tmp.c_str(), npath.c_str(), MOVEFILE_COPY_ALLOWED);
 	return true;
 }

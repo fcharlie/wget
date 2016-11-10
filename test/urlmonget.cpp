@@ -11,6 +11,7 @@
 
 //using namespace std;
 
+
 bool downloading;
 
 class DownloadStatus : public IBindStatusCallback

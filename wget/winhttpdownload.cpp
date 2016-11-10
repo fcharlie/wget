@@ -107,12 +107,6 @@ bool WinHTTPDownloadDriver(const std::wstring &url, const std::wstring &localFil
 		BaseErrorMessagePrint(L"WinHttpOpen(): %s", err.message());
 		return false;
 	}
-	InternetObject hConnect = WinHttpConnect(hInternet, zurl.host.c_str(),
-		(INTERNET_PORT)zurl.nPort, 0);
-	if (!hConnect) {
-		BaseErrorMessagePrint(L"Server unable to connect: %s",zurl.host.c_str());
-		return false;
-	}
 	//	WinHttpSetOption(hInternet, WINHTTP_OPTION_REDIRECT_POLICY, &dwOption,sizeof(DWORD));
 	/// https://msdn.microsoft.com/en-us/library/windows/desktop/aa384066(v=vs.85).aspx
 	/// WINHTTP_PROTOCOL_FLAG_HTTP2
@@ -126,6 +120,12 @@ bool WinHTTPDownloadDriver(const std::wstring &url, const std::wstring &localFil
 	if (!WinHttpSetOption(hInternet, WINHTTP_OPTION_ENABLE_HTTP_PROTOCOL, &dwOption, sizeof(dwOption))) {
 		ErrorMessage err(GetLastError());
 		BaseErrorMessagePrint(L"WINHTTP_OPTION_ENABLE_HTTP_PROTOCOL: %s", err.message());
+	}
+	InternetObject hConnect = WinHttpConnect(hInternet, zurl.host.c_str(),
+		(INTERNET_PORT)zurl.nPort, 0);
+	if (!hConnect) {
+		BaseErrorMessagePrint(L"Server unable to connect: %s", zurl.host.c_str());
+		return false;
 	}
 	DWORD dwOpenRequestFlag =
 		(zurl.nScheme == INTERNET_SCHEME_HTTPS) ? WINHTTP_FLAG_SECURE : 0;
