@@ -163,6 +163,7 @@ bool WinHTTPDownloadDriver(const std::wstring &url, const std::wstring &localFil
 	ParseHeader(&m_header[0], dwHeader, headers);
 	contentLength =
 		static_cast<uint64_t>(_wtoll(headers[L"Content-Length"].c_str()));
+	wprintf(L"File size: %lld\n", contentLength);
 	std::wstring tmp = localFile + L".part";
 	HANDLE hFile =
 		CreateFileW(tmp.c_str(), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ,

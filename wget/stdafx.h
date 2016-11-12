@@ -15,7 +15,7 @@
 
 class ErrorMessage {
 public:
-	ErrorMessage(DWORD errid):release_(false){
+	ErrorMessage(DWORD errid):lastError(errid),release_(false){
 		if (FormatMessageW(
 			FORMAT_MESSAGE_FROM_SYSTEM |
 			FORMAT_MESSAGE_ALLOCATE_BUFFER , nullptr, errid,
@@ -35,7 +35,9 @@ public:
 	const wchar_t *message()const {
 		return buf;
 	}
+	DWORD LastError()const { return lastError; }
 private:
+	DWORD lastError;
 	LPWSTR buf;
 	bool release_;
 	char reserved[sizeof(intptr_t) - sizeof(bool)];
@@ -49,3 +51,5 @@ struct ProgressCallback {
 
 bool WinRTDownloadFile(const std::wstring &remoteFile, const std::wstring &localFile);
 bool WinHTTPDownloadDriver(const std::wstring &url, const std::wstring &localFile, ProgressCallback *callback);
+bool WinINetDownloadDriver(const std::wstring &url, const std::wstring &localFile, ProgressCallback *callback);
+bool BackgroundCopyDriver(const std::wstring &remoteFile, const std::wstring &localFile);

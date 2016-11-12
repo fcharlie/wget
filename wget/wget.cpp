@@ -23,8 +23,9 @@ int wmain(int argc,wchar_t **argv)
 	}
 	// Parse commandline
 	//WinRTDownloadFile(argv[1], argv[2]);
-	ProgressCallback callback = { ProgressStatus,nullptr };
-	WinHTTPDownloadDriver(argv[1], argv[2], &callback);
+	//ProgressCallback callback = { ProgressStatus,nullptr };
+	//WinHTTPDownloadDriver(argv[1], argv[2], &callback);
+	BackgroundCopyDriver(argv[1], argv[2]);
     return 0;
 }
 

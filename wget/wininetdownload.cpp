@@ -79,6 +79,7 @@ bool WinINetDownloadDriver(const std::wstring &url, const std::wstring &localFil
 	if (!hInet) {
 		ErrorMessage err(GetLastError());
 		BaseErrorMessagePrint(L"InternetOpenW(): %s", err.message());
+		return false;
 	}
 	DWORD  dwOption = HTTP_PROTOCOL_FLAG_HTTP2;
 	InternetSetOptionW(hInet, INTERNET_OPTION_ENABLE_HTTP_PROTOCOL,&dwOption,sizeof(dwOption));
@@ -87,9 +88,15 @@ bool WinINetDownloadDriver(const std::wstring &url, const std::wstring &localFil
 	if (!hConnect) {
 		ErrorMessage err(GetLastError());
 		BaseErrorMessagePrint(L"InternetConnectW(): %s", err.message());
+		return false;
 	}
 	WinINetObject hRequest = HttpOpenRequestW(hConnect, L"GET", zurl.path.c_str(),
 		nullptr, L"", nullptr, INTERNET_FLAG_RELOAD, 0);
+	if (!hRequest) {
+		ErrorMessage err(GetLastError());
+		BaseErrorMessagePrint(L"HttpOpenRequestW(): %s", err.message());
+		return false;
+	}
 	// lpszVersion ->nullptr ,use config
 	std::wstring tmp = localFile + L".part";
 	HANDLE hFile =
