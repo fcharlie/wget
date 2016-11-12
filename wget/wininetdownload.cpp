@@ -9,8 +9,8 @@
 //INTERNET_OPTION_ENABLE_HTTP_PROTOCOL
 //HTTP_PROTOCOL_FLAG_HTTP2
 struct WinINetRequestURL {
-	int nPort;
-	int nScheme;
+	int nPort=0;
+	int nScheme=0;
 	std::wstring scheme;
 	std::wstring host;
 	std::wstring path;
@@ -75,6 +75,7 @@ bool WinINetDownloadDriver(const std::wstring &url, const std::wstring &localFil
 		BaseErrorMessagePrint(L"Wrong URL: %s\n", url.c_str());
 		return false;
 	}
+	DeleteUrlCacheEntryW(url.c_str());
 	WinINetObject hInet = InternetOpenW(L"WindowsGet", INTERNET_OPEN_TYPE_PRECONFIG, nullptr, nullptr, 0);
 	if (!hInet) {
 		ErrorMessage err(GetLastError());
@@ -83,6 +84,7 @@ bool WinINetDownloadDriver(const std::wstring &url, const std::wstring &localFil
 	}
 	DWORD  dwOption = HTTP_PROTOCOL_FLAG_HTTP2;
 	InternetSetOptionW(hInet, INTERNET_OPTION_ENABLE_HTTP_PROTOCOL,&dwOption,sizeof(dwOption));
+
 	WinINetObject hConnect = InternetConnectW(hInet, zurl.host.c_str(),
 		(INTERNET_PORT)zurl.nPort, nullptr, nullptr, INTERNET_SERVICE_HTTP, 0, NULL);
 	if (!hConnect) {
@@ -90,13 +92,35 @@ bool WinINetDownloadDriver(const std::wstring &url, const std::wstring &localFil
 		BaseErrorMessagePrint(L"InternetConnectW(): %s", err.message());
 		return false;
 	}
-	WinINetObject hRequest = HttpOpenRequestW(hConnect, L"GET", zurl.path.c_str(),
-		nullptr, L"", nullptr, INTERNET_FLAG_RELOAD, 0);
+	DWORD dwOpenRequestFlags = INTERNET_FLAG_IGNORE_REDIRECT_TO_HTTP |
+		INTERNET_FLAG_KEEP_CONNECTION |
+		INTERNET_FLAG_NO_AUTH |
+		INTERNET_FLAG_NO_COOKIES |
+		INTERNET_FLAG_NO_UI |
+		INTERNET_FLAG_SECURE |
+		INTERNET_FLAG_IGNORE_CERT_CN_INVALID |
+		INTERNET_FLAG_RELOAD;
+	DWORD dwSize=1;
+	DWORD dwSizeLength = sizeof(dwSize);
+	WinINetObject hRequest = InternetOpenUrlW(hInet, url.c_str(), nullptr, 0,
+		dwOpenRequestFlags, 0);
+	if (zurl.nScheme == INTERNET_SCHEME_HTTP
+		|| zurl.nScheme == INTERNET_SCHEME_HTTPS) {
+		HttpQueryInfoW(hRequest,
+			HTTP_QUERY_FLAG_NUMBER | HTTP_QUERY_CONTENT_LENGTH, 
+			&dwSize, &dwSizeLength, nullptr);
+		fprintf(stderr, "Content-Length: %ld\n", dwSize);
+	}
+	else if(zurl.nScheme==URL_SCHEME_FTP) {
+		FtpGetFileSize(hRequest, &dwSize);
+	}
+	//InternetQueryDataAvailable
 	if (!hRequest) {
 		ErrorMessage err(GetLastError());
-		BaseErrorMessagePrint(L"HttpOpenRequestW(): %s", err.message());
+		BaseErrorMessagePrint(L"InternetOpenUrlW(): %s", err.message());
 		return false;
 	}
+
 	// lpszVersion ->nullptr ,use config
 	std::wstring tmp = localFile + L".part";
 	HANDLE hFile =
@@ -104,18 +128,29 @@ bool WinINetDownloadDriver(const std::wstring &url, const std::wstring &localFil
 			NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
 	///
 	BYTE fixedsizebuf[16384];
+	//DWORD64 rdsize = 0;
 	DWORD dwReadSize = 0;
 	DWORD dwWriteSize = 0;
-	while (1)
-	{
-		if (InternetReadFile(hInet, fixedsizebuf, sizeof(fixedsizebuf), &dwReadSize)) {
-			if (dwReadSize == 0) {
-				break;
-			}
-			WriteFile(hFile, fixedsizebuf, dwReadSize, &dwWriteSize, NULL);
-		}
+	uint64_t rdsize = 0;
+	if (callback) {
+		callback->impl(0, callback->userdata);
 	}
-
+	BOOL result=true;
+	do {
+		result=InternetReadFile(hRequest, fixedsizebuf, sizeof(fixedsizebuf), &dwReadSize);
+		if (!result) {
+			ErrorMessage err(GetLastError());
+			BaseErrorMessagePrint(L"HttpOpenRequestW(): %s", err.message());
+		}
+		WriteFile(hFile, fixedsizebuf, dwReadSize, &dwWriteSize, nullptr);
+		rdsize += dwReadSize;
+		if (callback) {
+			callback->impl(rdsize *100/ dwSize, callback->userdata);
+		}
+	} while (result&&dwReadSize);
+	if (callback) {
+		callback->impl(100, callback->userdata);
+	}
 	std::wstring npath = localFile;
 	int i = 1;
 	while (PathFileExistsW(npath.c_str())) {

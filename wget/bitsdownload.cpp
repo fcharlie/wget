@@ -340,7 +340,7 @@ bool BackgroundCopyDriver(const std::wstring &remoteFile, const std::wstring &lo
 		}
 		LPWSTR buf = &_localFile[0] + dwSize;
 		buf[0] = '\\';
-		wcscpy_s(buf++, 0x8000 - dwSize - 1, localFile.c_str());
+		wcscpy_s(buf+1, 0x8000 - dwSize - 1, localFile.c_str());
 	}
 	else {
 		(void)_localFile.c_str();
