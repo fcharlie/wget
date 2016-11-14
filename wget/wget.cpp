@@ -71,9 +71,9 @@ bool RemoteFileSplitName(const std::wstring &url,std::wstring &file) {
 	return true;
 }
 
-void ProgressStatus(size_t rate, void *userdata) {
+void ProgressStatus(uint64_t rate, void *userdata) {
 	(void)userdata;
-	printf("\rDownload: %d%%", rate);
+	printf("\rDownload: %lld%%", rate);
 }
 
 int wmain(int argc,wchar_t **argv)

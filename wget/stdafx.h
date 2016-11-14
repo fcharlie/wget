@@ -50,7 +50,7 @@ struct ProgressInvoke {
 };
 
 struct ProgressCallback {
-	void(*impl)(size_t rate, void *userdata);
+	void(*impl)(uint64_t rate, void *userdata);
 	void *userdata;
 };
 

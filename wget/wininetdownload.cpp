@@ -101,7 +101,7 @@ bool DownloadFileUseWininet(const std::wstring &url, const std::wstring &localFi
 		INTERNET_FLAG_IGNORE_CERT_CN_INVALID |
 		INTERNET_FLAG_RELOAD;
 
-	DWORD dwContentLength=1;
+	DWORD64 dwContentLength=1;
 	WinINetObject hRequest = InternetOpenUrlW(hInet, url.c_str(), nullptr, 0,
 		dwOpenRequestFlags, 0);
 	if (zurl.nScheme == INTERNET_SCHEME_HTTP
@@ -113,14 +113,18 @@ bool DownloadFileUseWininet(const std::wstring &url, const std::wstring &localFi
 			&dwStatusCode, &dwSizeLength, nullptr)) {
 			return false;
 		}
-		dwSizeLength = sizeof(dwContentLength);
-		HttpQueryInfoW(hRequest,
-			HTTP_QUERY_FLAG_NUMBER | HTTP_QUERY_CONTENT_LENGTH, 
-			&dwContentLength, &dwSizeLength, nullptr);
-		fprintf(stderr, "Content-Length: %ld\n", dwContentLength);
+		wchar_t szbuf[20];
+		dwSizeLength = sizeof(szbuf);
+		HttpQueryInfoW(hRequest,HTTP_QUERY_CONTENT_LENGTH, 
+			szbuf, &dwSizeLength, nullptr);
+		wchar_t *cx;
+		dwContentLength = wcstoull(szbuf, &cx, 10);
+		fprintf(stderr, "Content-Length: %llu\n", dwContentLength);
 	}
 	else if(zurl.nScheme==URL_SCHEME_FTP) {
-		FtpGetFileSize(hRequest, &dwContentLength);
+		DWORD highSize=0;
+		auto loSize=FtpGetFileSize(hRequest, &highSize);
+		dwContentLength = ((DWORD64)highSize << 32)+loSize ;
 	}
 	//InternetQueryDataAvailable
 	if (!hRequest) {
