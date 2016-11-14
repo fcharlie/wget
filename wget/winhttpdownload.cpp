@@ -53,26 +53,118 @@ struct RequestURL {
 	}
 };
 
-
 #define DEFAULT_USERAGENT L"WindowsGet/1.0"
 
-static bool
-ParseHeader(wchar_t *begin, size_t length,
-	std::unordered_map<std::wstring, std::wstring> &headers) {
-	std::wstring header(begin, length);
-	auto np = header.find(L"\r\n");
-	size_t offset = 0;
-	while (np != std::wstring::npos) {
-		auto sp = header.find(L':', offset);
-		if (sp != std::wstring::npos && sp < np && sp > offset) {
-			headers[header.substr(offset, sp - offset)] =
-				header.substr(sp + 2, np - sp - 2);
+class HttpHeader{
+public:
+	~HttpHeader() {
+		if (buf) {
+			delete[] buf;
 		}
-		offset = np + 2;
-		np = header.find(L"\r\n", offset);
 	}
-	return true;
-}
+	bool Query(HINTERNET hRequest) {
+		DWORD dwHeader = 0;
+		WinHttpQueryHeaders(hRequest, WINHTTP_QUERY_RAW_HEADERS_CRLF,
+			WINHTTP_HEADER_NAME_BY_INDEX, NULL, &dwHeader,
+			WINHTTP_NO_HEADER_INDEX);
+		buf = new wchar_t[dwHeader + 1];
+		if (!WinHttpQueryHeaders(hRequest, WINHTTP_QUERY_RAW_HEADERS_CRLF,
+			WINHTTP_HEADER_NAME_BY_INDEX, buf, &dwHeader,
+			WINHTTP_NO_HEADER_INDEX)) {
+			return false;
+		}
+		///
+		return ParseHeader(buf,dwHeader);
+	}
+	DWORD StatusCode()const {
+		return dwStatusCode;
+	}
+	uint64_t ContentLength()const {
+		return contentLength;
+	}
+private:
+	bool ParseHeader(const wchar_t *data, size_t len) {
+		if (len < 16)
+			return false; // invalid
+		if (wmemcmp(data, L"HTTP/", sizeof("HTTP/") - 1) != 0)
+			return false;
+		auto iter = data + sizeof("HTTP/") - 1;
+		auto end = data + len;
+		if (*iter < '0' || *iter > '9' || iter[1] != '.' || iter[2] < '0' ||
+			iter[2] > '9') {
+			/// invalid http version
+			return false;
+		}
+		//httpversion_ = ((iter[0] - '0') << 4) + iter[2] - '0';
+		iter += 3;
+		wchar_t *c;
+		dwStatusCode = wcstol(iter, &c, 10);
+		if (dwStatusCode != 0 && c) {
+			iter = c;
+			iter++;
+			for (; iter < end; iter++) {
+				if (*iter == '\r')
+					continue;
+				else if (*iter == '\n')
+					break;
+				else
+					continue;
+					//statusline_.push_back(*iter);
+			}
+		}
+		else {
+			return false;
+		}
+		std::pair<std::wstring, std::wstring> hl;
+		bool left = false;
+		for (; iter != end; iter++) {
+			switch (*iter) {
+			case ':':
+				if (left) {
+					hl.second.push_back(':');
+					continue;
+				}
+				left = true;
+				if (iter + 1 < end)
+					iter++;
+				break;
+			case '\r':
+				break;
+			case '\n':
+				if (hl.first.size() && hl.second.size()) {
+					if (_wcsicmp(hl.first.c_str(), L"Content-Length") == 0) {
+						wchar_t *cx;
+						contentLength = wcstoull(hl.second.c_str(), &cx, 10);
+						return true;
+					}
+					hl.first.clear();
+					hl.second.clear();
+				}
+				else {
+					hl.first.clear();
+					hl.second.clear();
+				}
+				left = false;
+				break;
+			default:
+				if (left) {
+					hl.second.push_back(*iter);
+				}
+				else {
+					hl.first.push_back(*iter);
+				}
+				break;
+			}
+		}
+		return true;
+	}
+	wchar_t *buf{ nullptr };
+	size_t textlen;
+	size_t buflen;
+	DWORD dwStatusCode;
+	uint64_t contentLength{ 0 };
+};
+
 
 class InternetObject {
 public:
@@ -89,11 +181,14 @@ public:
 			WinHttpCloseHandle(hInternet_);
 		}
 	}
+	HINTERNET Raw()const {
+		return hInternet_;
+	}
 private:
 	HINTERNET hInternet_;
 };
 
-bool WinHTTPDownloadDriver(const std::wstring &url, const std::wstring &localFile,ProgressCallback *callback) {
+bool DownloadFileUseWinHTTP(const std::wstring &url, const std::wstring &localFile,ProgressCallback *callback) {
 	RequestURL zurl;
 	if (!zurl.Parse(url)) {
 		BaseErrorMessagePrint(L"Wrong URL: %s\n",url.c_str());
@@ -148,22 +243,17 @@ bool WinHTTPDownloadDriver(const std::wstring &url, const std::wstring &localFil
 		BaseErrorMessagePrint(L"Receive Response failed: %s", err.message());
 		return false;
 	}
-	DWORD dwHeader = 0;
-	BOOL bResult = FALSE;
-	bResult = ::WinHttpQueryHeaders(hRequest, WINHTTP_QUERY_RAW_HEADERS_CRLF,
-		WINHTTP_HEADER_NAME_BY_INDEX, NULL, &dwHeader,
-		WINHTTP_NO_HEADER_INDEX);
-	std::wstring m_header;
-	m_header.reserve(dwHeader + 1);
-	uint64_t contentLength = 0;
-	::WinHttpQueryHeaders(hRequest, WINHTTP_QUERY_RAW_HEADERS_CRLF,
-		WINHTTP_HEADER_NAME_BY_INDEX, &m_header[0], &dwHeader,
-		WINHTTP_NO_HEADER_INDEX);
-	std::unordered_map<std::wstring, std::wstring> headers;
-	ParseHeader(&m_header[0], dwHeader, headers);
-	contentLength =
-		static_cast<uint64_t>(_wtoll(headers[L"Content-Length"].c_str()));
-	wprintf(L"File size: %lld\n", contentLength);
+	HttpHeader header;
+	if (!header.Query(hRequest.Raw())) {
+		ErrorMessage err(GetLastError());
+		BaseErrorMessagePrint(L"Query Header failed: %s", err.message());
+		return false;
+	}
+	if (header.StatusCode() != 200 && header.StatusCode() != 201) {
+		BaseErrorMessagePrint(L"StatusCode: %d",header.StatusCode());
+		return false;
+	}
+	wprintf(L"File size: %lld\n", header.ContentLength());
 	std::wstring tmp = localFile + L".part";
 	HANDLE hFile =
 		CreateFileW(tmp.c_str(), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ,
@@ -182,9 +272,9 @@ bool WinHTTPDownloadDriver(const std::wstring &url, const std::wstring &localFil
 			break;
 		}
 		total += dwSize;
-		if (contentLength > 0) {
+		if (header.ContentLength() > 0) {
 			if (callback) {
-				callback->impl(total * 100 / contentLength, callback->userdata);
+				callback->impl(total * 100 / header.ContentLength(), callback->userdata);
 			}
 		}
 		auto dwSizeN = dwSize;

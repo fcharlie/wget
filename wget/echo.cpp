@@ -7,6 +7,8 @@
 #include <cstring>
 #include <cassert>
 #include <ctype.h>
+#include <codecvt>
+#include <io.h>
 
 struct StringBuffer {
 	const wchar_t *begin;
@@ -39,13 +41,13 @@ static int hextobin(wchar_t c) {
 	}
 }
 
-bool LineToBin(const wchar_t *cstr,std::wstring &line) {
+bool LineToBin(const wchar_t *cstr, std::wstring &line) {
 	assert(cstr);
 	auto len = wcslen(cstr);
 	line.reserve(len + 1);
 	/// Do Parse....
 	auto iter = cstr;
-	unsigned char c;
+	wchar_t c;
 	while ((c = *iter++)) {
 		if (c == '\\' && *iter) {
 			switch (c = *iter++) {
@@ -82,11 +84,11 @@ bool LineToBin(const wchar_t *cstr,std::wstring &line) {
 					continue;
 				}
 				iter++;
-				c = hextobin(ch);
+				c =static_cast<wchar_t>(hextobin(ch));
 				ch = *iter;
 				if (isxdigit(ch)) {
 					iter++;
-					c = c * 16 + hextobin(ch);
+					c = c * 16 + static_cast<wchar_t>(hextobin(ch));
 				}
 			} break;
 			case '0':
@@ -118,7 +120,46 @@ bool LineToBin(const wchar_t *cstr,std::wstring &line) {
 	return true;
 }
 
-bool Printline(const std::wstring &line)
+bool IsUnderConhost(FILE *fp) {
+	HANDLE hStderr = reinterpret_cast<HANDLE>(_get_osfhandle(_fileno(fp)));
+	return GetFileType(hStderr) == FILE_TYPE_CHAR;
+}
+
+bool IsWindowsTTY() {
+	if (GetEnvironmentVariableW(L"TERM", NULL, 0) == 0) {
+		if (GetLastError() == ERROR_ENVVAR_NOT_FOUND)
+			return false;
+	}
+	return true;
+}
+
+bool PrintlineU8(FILE *fp, const std::wstring &line) {
+	std::wstring_convert<std::codecvt_utf8<wchar_t>> conv;
+	std::string u8line = conv.to_bytes(line);
+	size_t sz = fwrite(u8line.c_str(), 1, u8line.size(), fp);
+	return sz == u8line.size();
+}
+
+bool Printline(FILE *fp, const std::wstring &line)
 {
+	if (IsWindowsTTY()) {
+		return PrintlineU8(fp, line);
+	}
+	if (!IsUnderConhost(fp)&&fp != stderr &&fp != stdout) {
+		fwprintf(fp, L"%s", line.c_str());
+		return true;
+	}
+	HANDLE hConsole = nullptr;
+	if (fp == stdout) {
+		hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+	}
+	else if (fp == stderr) {
+		hConsole = GetStdHandle(STD_ERROR_HANDLE);
+	}
+	CONSOLE_SCREEN_BUFFER_INFO csbi;
+	GetConsoleScreenBufferInfo(hConsole, &csbi);
+	WORD dColor = csbi.wAttributes;
+	///
+
 	return true;
 }

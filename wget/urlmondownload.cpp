@@ -100,7 +100,7 @@ HRESULT DownloadStatus::OnProgress(ULONG ulProgress, ULONG ulProgressMax,
 }
 
 
-bool DownloadFileWarp(const std::wstring &remoteFile, const std::wstring &localFile) {
+bool UseDownloadURLToFile(const std::wstring &remoteFile, const std::wstring &localFile) {
 	DownloadStatus ds;
 #ifndef ENABLE_CACHE
 	DeleteUrlCacheEntryW(remoteFile.c_str());

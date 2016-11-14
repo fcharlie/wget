@@ -287,7 +287,7 @@ MonitorJobProgress(_In_ IBackgroundCopyJob *Job)
 	return hr;
 }
 
-bool BackgroundCopyDriver(const std::wstring &remoteFile, const std::wstring &localFile) {
+bool DownloadFileUseBITS(const std::wstring &remoteFile, const std::wstring &localFile) {
 	HRESULT hr=S_OK;
 	IBackgroundCopyManager* manager = NULL;
 	IBackgroundCopyJob* Job = NULL;

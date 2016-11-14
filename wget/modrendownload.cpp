@@ -44,7 +44,7 @@ public:
 	}
 };
 
-bool WinRTDownloadFile(const std::wstring &remoteFile, const std::wstring &localFile) {
+bool DownloadFileUseWinRT(const std::wstring &remoteFile, const std::wstring &localFile) {
 	initialize();
 	try {
 		DownloadFileInternal(remoteFile.c_str(), localFile.c_str()).get();

@@ -43,13 +43,21 @@ private:
 	char reserved[sizeof(intptr_t) - sizeof(bool)];
 };
 
-// TODO:  在此处引用程序需要的其他头文件
+struct ProgressInvoke {
+	void(*start)(uint64_t filesize,void *userdata);
+	void(*progress)(uint64_t rdsize, float rate, void *userdata);
+	void *userdata;
+};
+
 struct ProgressCallback {
 	void(*impl)(size_t rate, void *userdata);
 	void *userdata;
 };
 
-bool WinRTDownloadFile(const std::wstring &remoteFile, const std::wstring &localFile);
-bool WinHTTPDownloadDriver(const std::wstring &url, const std::wstring &localFile, ProgressCallback *callback);
-bool WinINetDownloadDriver(const std::wstring &url, const std::wstring &localFile, ProgressCallback *callback);
-bool BackgroundCopyDriver(const std::wstring &remoteFile, const std::wstring &localFile);
+
+
+bool DownloadFileUseWinRT(const std::wstring &remoteFile, const std::wstring &localFile);
+bool DownloadFileUseWinHTTP(const std::wstring &url, const std::wstring &localFile, ProgressCallback *callback);
+bool DownloadFileUseWininet(const std::wstring &url, const std::wstring &localFile, ProgressCallback *callback);
+bool DownloadFileUseBITS(const std::wstring &remoteFile, const std::wstring &localFile);
+bool UseDownloadURLToFile(const std::wstring &remoteFile, const std::wstring &localFile);

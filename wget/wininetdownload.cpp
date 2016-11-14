@@ -69,7 +69,7 @@ private:
 	HINTERNET hInternet_;
 };
 
-bool WinINetDownloadDriver(const std::wstring &url, const std::wstring &localFile, ProgressCallback *callback) {
+bool DownloadFileUseWininet(const std::wstring &url, const std::wstring &localFile, ProgressCallback *callback) {
 	WinINetRequestURL zurl;
 	if (!zurl.Parse(url)) {
 		BaseErrorMessagePrint(L"Wrong URL: %s\n", url.c_str());
@@ -100,19 +100,27 @@ bool WinINetDownloadDriver(const std::wstring &url, const std::wstring &localFil
 		INTERNET_FLAG_SECURE |
 		INTERNET_FLAG_IGNORE_CERT_CN_INVALID |
 		INTERNET_FLAG_RELOAD;
-	DWORD dwSize=1;
-	DWORD dwSizeLength = sizeof(dwSize);
+
+	DWORD dwContentLength=1;
 	WinINetObject hRequest = InternetOpenUrlW(hInet, url.c_str(), nullptr, 0,
 		dwOpenRequestFlags, 0);
 	if (zurl.nScheme == INTERNET_SCHEME_HTTP
 		|| zurl.nScheme == INTERNET_SCHEME_HTTPS) {
+		DWORD dwStatusCode = 0;
+		DWORD dwSizeLength = sizeof(dwStatusCode);
+		if (HttpQueryInfoW(hRequest,
+			HTTP_QUERY_FLAG_NUMBER | HTTP_QUERY_STATUS_CODE,
+			&dwStatusCode, &dwSizeLength, nullptr)) {
+			return false;
+		}
+		dwSizeLength = sizeof(dwContentLength);
 		HttpQueryInfoW(hRequest,
 			HTTP_QUERY_FLAG_NUMBER | HTTP_QUERY_CONTENT_LENGTH, 
-			&dwSize, &dwSizeLength, nullptr);
-		fprintf(stderr, "Content-Length: %ld\n", dwSize);
+			&dwContentLength, &dwSizeLength, nullptr);
+		fprintf(stderr, "Content-Length: %ld\n", dwContentLength);
 	}
 	else if(zurl.nScheme==URL_SCHEME_FTP) {
-		FtpGetFileSize(hRequest, &dwSize);
+		FtpGetFileSize(hRequest, &dwContentLength);
 	}
 	//InternetQueryDataAvailable
 	if (!hRequest) {
@@ -145,7 +153,7 @@ bool WinINetDownloadDriver(const std::wstring &url, const std::wstring &localFil
 		WriteFile(hFile, fixedsizebuf, dwReadSize, &dwWriteSize, nullptr);
 		rdsize += dwReadSize;
 		if (callback) {
-			callback->impl(rdsize *100/ dwSize, callback->userdata);
+			callback->impl(rdsize *100/ dwContentLength, callback->userdata);
 		}
 	} while (result&&dwReadSize);
 	if (callback) {
