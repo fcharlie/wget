@@ -75,7 +75,7 @@ void ProgressStatus(uint64_t rate, void *userdata) {
 	(void)userdata;
 	printf("\rDownload: %lld%%", rate);
 }
-
+//#define FKG_FORCED_USAGE
 int wmain(int argc,wchar_t **argv)
 {
 	//BaseErrorMessagePrint(L"\xD83C\xDD9A\n");

@@ -198,3 +198,4 @@ CMakeCache.txt
 .vs/
 *.db
 *.opendb
+*.exe

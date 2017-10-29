@@ -21,7 +21,7 @@ public:
 			FORMAT_MESSAGE_ALLOCATE_BUFFER , nullptr, errid,
 			MAKELANGID(LANG_NEUTRAL, SUBLANG_NEUTRAL),
 			(LPWSTR)&buf, 0, nullptr)==0) {
-			buf = L"Unknown error";
+			buf = const_cast<wchar_t*>(L"Unknown error");
 		}
 		else {
 			release_ = true;
